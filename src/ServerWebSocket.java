@@ -13,6 +13,7 @@ import org.java_websocket.handshake.ClientHandshake;
 
 public class ServerWebSocket extends WebSocketServer {
     public Map<String,List<Message>> log = new HashMap<>();
+    public List<String> publicRooms = new ArrayList<>();
     public ServerWebSocket(InetSocketAddress address) {
         super(address);
     }
@@ -20,7 +21,9 @@ public class ServerWebSocket extends WebSocketServer {
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         System.out.println("Nouvelle connexion de " + conn.getRemoteSocketAddress());
-        conn.send(new Message("System","Welcome","All").serialize());
+        for (String room : publicRooms){
+            conn.send(RoomMessage(room).serialize());
+        }
     }
 
     @Override
@@ -30,9 +33,17 @@ public class ServerWebSocket extends WebSocketServer {
             File save = new File("save");
             ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(save));
             oos.writeObject(log);
+
+            File saveRooms = new File("rooms");
+            ObjectOutputStream oos2 = new ObjectOutputStream(new FileOutputStream(saveRooms));
+            oos2.writeObject(publicRooms);
         }catch (IOException e){
             System.out.println("Saving logs cancelled due to : " + e.getMessage());
         }
+    }
+
+    public Message RoomMessage(String roomName){
+        return new Message("RoomInfo",roomName,"System");
     }
 
     @Override
@@ -45,6 +56,8 @@ public class ServerWebSocket extends WebSocketServer {
             log.get(message1.roomName).add(message1);
         }else{
             //Setting d'une nouvelle room
+            publicRooms.add(message1.roomName);
+            broadcast(RoomMessage(message1.roomName).serialize());
             message1.message = "Ouverture de Room : " + message1.roomName;
             List<Message> tmp = new ArrayList<>();
             tmp.add(message1);
@@ -53,7 +66,12 @@ public class ServerWebSocket extends WebSocketServer {
 
         //Envoi du contenu de la room
         List<Message> tmp = new ArrayList<>(log.get(message1.roomName));
-        tmp.removeLast();
+        //Affichage des 30 derniers messages
+        try {
+            tmp = tmp.subList(tmp.size() - 12, tmp.size() - 2);
+        } catch (Exception e) {
+            tmp.removeLast();
+        }
         for (Message msg : tmp) {
             conn.send(msg.serialize());
         }
@@ -82,6 +100,10 @@ public class ServerWebSocket extends WebSocketServer {
             File save = new File("save");
             ObjectInputStream ois = new ObjectInputStream(new FileInputStream(save));
             log = (Map<String,List<Message>>)ois.readObject();
+
+            File saveRoom = new File("rooms");
+            ObjectInputStream ois2 = new ObjectInputStream(new FileInputStream(saveRoom));
+            publicRooms = (List<String>) ois2.readObject();
         }catch (IOException e){
             System.out.println("Loading logs cancelled due to : " + e.getMessage());
         } catch (ClassNotFoundException e) {
