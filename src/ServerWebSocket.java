@@ -25,8 +25,14 @@ public class ServerWebSocket extends WebSocketServer {
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        //TODO Save locally
         System.out.println("Connexion fermée : " + reason);
+        try {
+            File save = new File("save");
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(save));
+            oos.writeObject(log);
+        }catch (IOException e){
+            System.out.println("Saving logs cancelled due to : " + e.getMessage());
+        }
     }
 
     @Override
@@ -72,6 +78,15 @@ public class ServerWebSocket extends WebSocketServer {
     @Override
     public void onStart() {
         System.out.println("Serveur WebSocket WSS démarré sur le port 8887");
+        try {
+            File save = new File("save");
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(save));
+            log = (Map<String,List<Message>>)ois.readObject();
+        }catch (IOException e){
+            System.out.println("Loading logs cancelled due to : " + e.getMessage());
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static void main(String[] args) throws Exception {
