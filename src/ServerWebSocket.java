@@ -5,19 +5,38 @@ import java.nio.ByteBuffer;
 
 import java.util.*;
 
-import org.example.uichat.Message;
 import org.java_websocket.WebSocket;
 import org.java_websocket.server.DefaultWebSocketServerFactory;
 import org.java_websocket.server.WebSocketServer;
 import org.java_websocket.handshake.ClientHandshake;
 
+/**
+ * Socket de server
+ */
 public class ServerWebSocket extends WebSocketServer {
+    /**
+     * historique des rooms et des messages
+     */
     public Map<String,List<Message>> log = new HashMap<>();
+
+    /**
+     * historique des rooms publiques
+     */
     public Set<String> publicRooms = new HashSet<>();
+
+    /**
+     * Constructeur
+     * @param address adresse
+     */
     public ServerWebSocket(InetSocketAddress address) {
         super(address);
     }
 
+    /**
+     * Lors de la connexion à un nouvel user
+     * @param conn interlocuteur
+     * @param handshake handshake
+     */
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         System.out.println("Nouvelle connexion de " + conn.getRemoteSocketAddress());
@@ -26,10 +45,18 @@ public class ServerWebSocket extends WebSocketServer {
         }
     }
 
+    /**
+     * Fermeture de la connexion
+     * @param conn interlocuteur
+     * @param code ide de fermeture
+     * @param reason raison de la fermeture
+     * @param remote is remote
+     */
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         System.out.println("Connexion fermée : " + reason);
         try {
+            //Sauvegarde des données dans des fichiers
             File save = new File("save");
             ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(save));
             oos.writeObject(log);
@@ -37,15 +64,17 @@ public class ServerWebSocket extends WebSocketServer {
             File saveRooms = new File("rooms");
             ObjectOutputStream oos2 = new ObjectOutputStream(new FileOutputStream(saveRooms));
             oos2.writeObject(publicRooms);
+
         }catch (IOException e){
             System.out.println("Saving logs cancelled due to : " + e.getMessage());
         }
     }
 
-    public Message RoomMessage(String roomName){
-        return new Message("RoomInfo",roomName,"System");
-    }
-
+    /**
+     * Reception d'un message en String
+     * @param conn interlocuteur
+     * @param message message string
+     */
     @Override
     public void onMessage(WebSocket conn, String message) {
         //Deserialisation
@@ -88,26 +117,40 @@ public class ServerWebSocket extends WebSocketServer {
         }
 
 
-        System.out.println(conn.getRemoteSocketAddress() + message1.toString());
+        System.out.println("Room : " + message1.roomName + "  " + message1.toString());
 
         //Renvoi
         broadcast(message);
     }
 
+    /**
+     * Lors de la reception d'un message en binaire
+     * @param conn interlocuteur
+     * @param message message
+     */
     @Override
     public void onMessage(WebSocket conn, ByteBuffer message) {
         System.out.println("Uhhhh?");
     }
 
+    /**
+     * Si il y a une erreur
+     * @param conn interlocuteur
+     * @param ex exception
+     */
     @Override
     public void onError(WebSocket conn, Exception ex) {
         System.err.println("Erreur: " + ex.getMessage());
     }
 
+    /**
+     * Lors du lancement de l'app
+     */
     @Override
     public void onStart() {
         System.out.println("Serveur WebSocket WSS démarré sur le port 8887");
         try {
+            //Recuperation des données contenues dans les fichiers de sauvegarde
             File save = new File("save");
             ObjectInputStream ois = new ObjectInputStream(new FileInputStream(save));
             log = (Map<String,List<Message>>)ois.readObject();
@@ -120,6 +163,15 @@ public class ServerWebSocket extends WebSocketServer {
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Message de logIn de room
+     * @param roomName nom de la room
+     * @return message
+     */
+    public Message RoomMessage(String roomName){
+        return new Message("RoomInfo",roomName,"System");
     }
 
     public static void main(String[] args) throws Exception {

@@ -1,5 +1,3 @@
-package org.example.uichat;
-
 //import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.Serializable;
