@@ -13,7 +13,7 @@ import org.java_websocket.handshake.ClientHandshake;
 
 public class ServerWebSocket extends WebSocketServer {
     public Map<String,List<Message>> log = new HashMap<>();
-    public List<String> publicRooms = new ArrayList<>();
+    public Set<String> publicRooms = new HashSet<>();
     public ServerWebSocket(InetSocketAddress address) {
         super(address);
     }
@@ -112,7 +112,7 @@ public class ServerWebSocket extends WebSocketServer {
 
             File saveRoom = new File("rooms");
             ObjectInputStream ois2 = new ObjectInputStream(new FileInputStream(saveRoom));
-            publicRooms = (List<String>) ois2.readObject();
+            publicRooms = (Set<String>) ois2.readObject();
         }catch (IOException e){
             System.out.println("Loading logs cancelled due to : " + e.getMessage());
         } catch (ClassNotFoundException e) {
