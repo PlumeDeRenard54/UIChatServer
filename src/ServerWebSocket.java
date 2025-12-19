@@ -11,7 +11,7 @@ import org.java_websocket.server.WebSocketServer;
 import org.java_websocket.handshake.ClientHandshake;
 
 /**
- * Socket de server
+ * Socket de server broadcast server version (might be outdated)
  */
 public class ServerWebSocket extends WebSocketServer {
     /**
