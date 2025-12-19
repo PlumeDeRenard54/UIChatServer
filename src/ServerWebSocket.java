@@ -81,39 +81,40 @@ public class ServerWebSocket extends WebSocketServer {
         Message message1 = Message.unserialize(message);
 
         //Log
-        if (log.containsKey(message1.roomName)) {
-            //Reception des commandes
-            switch (message1.message) {
-                case "/clear" -> {
-                    log.remove(message1.roomName);
-                    onMessage(conn,message);
-                    return;
-                }
-
-                default -> log.get(message1.roomName).add(message1);
-            }
-        }else{
+        if (!log.containsKey(message1.roomName)) {
             //Setting d'une nouvelle room
             publicRooms.add(message1.roomName);
             broadcast(RoomMessage(message1.roomName).serialize());
             message1.message = "Ouverture de Room : " + message1.roomName;
             List<Message> tmp = new ArrayList<>();
             tmp.add(message1);
-            log.put(message1.roomName,tmp);
+            log.put(message1.roomName, tmp);
         }
 
-        //Envoi du contenu de la room
-        List<Message> tmp = new ArrayList<>(log.get(message1.roomName));
-        //Affichage des 30 derniers messages
-        try {
-            tmp = tmp.subList(tmp.size() - 12, tmp.size());
-        } catch (Exception _) {}
-        for (Message msg : tmp) {
-            conn.send(msg.serialize());
+        //Traitement des commandes
+        switch (message1.message.split(" ")[0]) {
+            //Commandes
+            case "/clear" :
+                log.remove(message1.roomName);
+                break;
+
+            case "/broadcast" :
+                sendBroadCast(message1);
+                break;
+
+            //Updates
+            case "askUpdate" :
+                if (message1.user.equals("System")) break;
+
+            default :
+                log.get(message1.roomName).add(message1);
         }
 
+        //Envoi des updates
+        sendUpdate(conn,message1.roomName);
 
-        System.out.println("Room : " + message1.roomName + "  " + message1.toString());
+        //Log
+        System.out.println("Room : " + message1.roomName + "  " + message1);
     }
 
     /**
@@ -163,6 +164,32 @@ public class ServerWebSocket extends WebSocketServer {
      */
     public Message RoomMessage(String roomName){
         return new Message("RoomInfo",roomName,"System");
+    }
+
+    /**
+     * Envoie le contenu de la room
+     * @param conn interlocuteur
+     * @param roomName nom de la room
+     */
+    public void sendUpdate(WebSocket conn,String roomName){
+        //Envoi du contenu de la room
+        List<Message> tmp = new ArrayList<>(log.get(roomName));
+        //Affichage des 30 derniers messages
+        try {
+            tmp = tmp.subList(tmp.size() - 12, tmp.size());
+        } catch (Exception _) {}
+        for (Message msg : tmp) {
+            conn.send(msg.serialize());
+        }
+    }
+
+    public void sendBroadCast(Message message){
+        String [] messageSplit = message.message.split(" ");
+        if (messageSplit.length == 1){return;}
+        String messageclean = String.join(" ",Arrays.copyOfRange(messageSplit,1,messageSplit.length));
+        for (String room : publicRooms){
+            log.get(room).add(new Message(message.user,messageclean,room));
+        }
     }
 
     public static void main(String[] args) throws Exception {
