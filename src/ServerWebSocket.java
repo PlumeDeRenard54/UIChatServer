@@ -79,7 +79,9 @@ public class ServerWebSocket extends WebSocketServer {
         try {
             tmp = tmp.subList(tmp.size() - 12, tmp.size() - 2);
         } catch (Exception e) {
-            tmp.removeLast();
+            if(!tmp.isEmpty()) {
+                tmp.removeLast();
+            }
         }
         for (Message msg : tmp) {
             conn.send(msg.serialize());
