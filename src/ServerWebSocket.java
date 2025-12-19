@@ -106,12 +106,8 @@ public class ServerWebSocket extends WebSocketServer {
         List<Message> tmp = new ArrayList<>(log.get(message1.roomName));
         //Affichage des 30 derniers messages
         try {
-            tmp = tmp.subList(tmp.size() - 12, tmp.size() - 1);
-        } catch (Exception e) {
-            if(!tmp.isEmpty()) {
-                tmp.removeLast();
-            }
-        }
+            tmp = tmp.subList(tmp.size() - 12, tmp.size());
+        } catch (Exception _) {}
         for (Message msg : tmp) {
             conn.send(msg.serialize());
         }
@@ -155,10 +151,8 @@ public class ServerWebSocket extends WebSocketServer {
             File saveRoom = new File("rooms");
             ObjectInputStream ois2 = new ObjectInputStream(new FileInputStream(saveRoom));
             publicRooms = (Set<String>) ois2.readObject();
-        }catch (IOException e){
+        }catch (IOException | ClassNotFoundException e){
             System.out.println("Loading logs cancelled due to : " + e.getMessage());
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
         }
     }
 
