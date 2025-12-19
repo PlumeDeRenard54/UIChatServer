@@ -106,7 +106,7 @@ public class ServerWebSocket extends WebSocketServer {
         List<Message> tmp = new ArrayList<>(log.get(message1.roomName));
         //Affichage des 30 derniers messages
         try {
-            tmp = tmp.subList(tmp.size() - 12, tmp.size() - 2);
+            tmp = tmp.subList(tmp.size() - 12, tmp.size() - 1);
         } catch (Exception e) {
             if(!tmp.isEmpty()) {
                 tmp.removeLast();
@@ -118,9 +118,6 @@ public class ServerWebSocket extends WebSocketServer {
 
 
         System.out.println("Room : " + message1.roomName + "  " + message1.toString());
-
-        //Renvoi
-        broadcast(message);
     }
 
     /**
