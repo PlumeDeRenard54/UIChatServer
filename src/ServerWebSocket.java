@@ -53,7 +53,12 @@ public class ServerWebSocket extends WebSocketServer {
 
         //Log
         if (log.containsKey(message1.roomName)) {
-            log.get(message1.roomName).add(message1);
+            //Reception des commandes
+            switch (message1.message) {
+                case "/clear" -> log.remove(message1.roomName);
+
+                default -> log.get(message1.roomName).add(message1);
+            }
         }else{
             //Setting d'une nouvelle room
             publicRooms.add(message1.roomName);
