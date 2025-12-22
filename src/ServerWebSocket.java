@@ -41,7 +41,7 @@ public class ServerWebSocket extends WebSocketServer {
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         System.out.println("Nouvelle connexion de " + conn.getRemoteSocketAddress());
         for (String room : publicRooms){
-            conn.send(RoomMessage(room).serialize());
+            conn.send(RoomMessage(room).serializeJson());
         }
     }
 
@@ -56,14 +56,25 @@ public class ServerWebSocket extends WebSocketServer {
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         System.out.println("Connexion fermée : " + reason);
         try {
-            //Sauvegarde des données dans des fichiers
-            File save = new File("save");
-            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(save));
-            oos.writeObject(log);
+            //Creation du dossier
+            new File("sauvegardes").mkdir();
 
-            File saveRooms = new File("rooms");
-            ObjectOutputStream oos2 = new ObjectOutputStream(new FileOutputStream(saveRooms));
-            oos2.writeObject(publicRooms);
+            //Sauvegarde des données dans des fichiers
+            for (String room : log.keySet()) {
+                File save = new File("sauvegardes/"+room);
+                PrintWriter pw = new PrintWriter(new FileWriter(save));
+                for (Message message : log.get(room)) {
+                    pw.println(message.serializeJson());
+                }
+                pw.flush();
+            }
+
+            File saveRooms = new File("publicRooms");
+            PrintWriter pw = new PrintWriter(new FileWriter(saveRooms));
+            for (String room : publicRooms){
+                pw.println(room);
+            }
+            pw.flush();
 
         }catch (IOException e){
             System.out.println("Saving logs cancelled due to : " + e.getMessage());
@@ -77,44 +88,45 @@ public class ServerWebSocket extends WebSocketServer {
      */
     @Override
     public void onMessage(WebSocket conn, String message) {
+        System.out.println(message);
         //Deserialisation
-        Message message1 = Message.unserialize(message);
+            Message message1 = Message.unserializeJson(message);
 
-        //Log
-        if (!log.containsKey(message1.roomName)) {
-            //Setting d'une nouvelle room
-            publicRooms.add(message1.roomName);
-            broadcast(RoomMessage(message1.roomName).serialize());
-            message1.message = "Ouverture de Room : " + message1.roomName;
-            List<Message> tmp = new ArrayList<>();
-            tmp.add(message1);
-            log.put(message1.roomName, tmp);
-        }
+            //Log
+            if (!log.containsKey(message1.roomName)) {
+                //Setting d'une nouvelle room
+                publicRooms.add(message1.roomName);
+                broadcast(RoomMessage(message1.roomName).serializeJson());
+                message1.message = "Ouverture de Room : " + message1.roomName;
+                List<Message> tmp = new ArrayList<>();
+                tmp.add(message1);
+                log.put(message1.roomName, tmp);
+            }
 
-        //Traitement des commandes
-        switch (message1.message.split(" ")[0]) {
-            //Commandes
-            case "/clear" :
-                log.remove(message1.roomName);
-                break;
+            //Traitement des commandes
+            switch (message1.message.split(" ")[0]) {
+                //Commandes
+                case "/clear":
+                    log.remove(message1.roomName);
+                    break;
 
-            case "/broadcast" :
-                sendBroadCast(message1);
-                break;
+                case "/broadcast":
+                    sendBroadCast(message1);
+                    break;
 
-            //Updates
-            case "askUpdate" :
-                if (message1.user.equals("System")) break;
+                //Updates
+                case "askUpdate":
+                    if (message1.user.equals("System")) break;
 
-            default :
-                log.get(message1.roomName).add(message1);
-        }
+                default:
+                    log.get(message1.roomName).add(message1);
+            }
 
-        //Envoi des updates
-        sendUpdate(conn,message1.roomName);
+            //Envoi des updates
+            sendUpdate(conn, message1.roomName);
 
-        //Log
-        System.out.println("Room : " + message1.roomName + "  " + message1);
+            //Log
+            System.out.println("Room : " + message1.roomName + "  " + message1);
     }
 
     /**
@@ -144,15 +156,25 @@ public class ServerWebSocket extends WebSocketServer {
     public void onStart() {
         System.out.println("Serveur WebSocket WSS démarré sur le port 8887");
         try {
+            if (new File("sauvegardes").listFiles() == null){return;}
             //Recuperation des données contenues dans les fichiers de sauvegarde
-            File save = new File("save");
-            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(save));
-            log = (Map<String,List<Message>>)ois.readObject();
+            for (File file : Objects.requireNonNull(new File("sauvegardes").listFiles())) {
+                log.put(file.getName(),new ArrayList<>());
+                BufferedReader reader = new BufferedReader(new FileReader(file));
+                String line;
+                while ((line = reader.readLine()) != null){
+                    log.get(file.getName()).add(Message.unserializeJson(line));
+                }
+            }
 
-            File saveRoom = new File("rooms");
-            ObjectInputStream ois2 = new ObjectInputStream(new FileInputStream(saveRoom));
-            publicRooms = (Set<String>) ois2.readObject();
-        }catch (IOException | ClassNotFoundException e){
+            File saveRoom = new File("publicRooms");
+            BufferedReader reader = new BufferedReader(new FileReader(saveRoom));
+            String line;
+            while ((line = reader.readLine()) != null){
+                publicRooms.add(line);
+            }
+
+        }catch (IOException e){
             System.out.println("Loading logs cancelled due to : " + e.getMessage());
         }
     }
@@ -179,7 +201,7 @@ public class ServerWebSocket extends WebSocketServer {
             tmp = tmp.subList(tmp.size() - 12, tmp.size());
         } catch (Exception _) {}
         for (Message msg : tmp) {
-            conn.send(msg.serialize());
+            conn.send(msg.serializeJson());
         }
     }
 
