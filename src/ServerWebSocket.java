@@ -101,6 +101,7 @@ public class ServerWebSocket extends WebSocketServer {
                 List<Message> tmp = new ArrayList<>();
                 tmp.add(message1);
                 log.put(message1.roomName, tmp);
+                return;
             }
 
             //Traitement des commandes
